@@ -1,0 +1,68 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: farmsense-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: farmsense
+      POSTGRES_PASSWORD: farmsense-password
+      POSTGRES_DB: farmsense
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U farmsense -d farmsense"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  mosquitto:
+    image: eclipse-mosquitto:2.0
+    container_name: farmsense-mosquitto
+    restart: unless-stopped
+    ports:
+      - "1883:1883"
+    volumes:
+      - ./mosquitto/mosquitto.conf:/mosquitto/config/mosquitto.conf:ro
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: farmsense-api
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    environment:
+      FARMSENSE_API_KEY: ${FARMSENSE_API_KEY:-farmsense-dev-key}
+      DATABASE_URL: postgresql+psycopg://farmsense:farmsense-password@postgres:5432/farmsense
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ANTHROPIC_MODEL: ${ANTHROPIC_MODEL:-claude-sonnet-5}
+      MQTT_HOST: mosquitto
+      MQTT_PORT: 1883
+      CORS_ORIGINS: http://localhost:3000,http://127.0.0.1:3000
+      AUTO_ORCHESTRATE_INTERVAL: 10
+      LOG_LEVEL: INFO
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mosquitto:
+        condition: service_started
+
+  web:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: farmsense-web
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NEXT_PUBLIC_API_URL: http://localhost:8000
+      NEXT_PUBLIC_API_KEY: ${FARMSENSE_API_KEY:-farmsense-dev-key}
+    depends_on:
+      - api
+
+volumes:
+  postgres_data:
