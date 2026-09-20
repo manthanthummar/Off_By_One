@@ -344,3 +344,8 @@ The frontend is built with Next.js 14 App Router, styled in an earthy-modern pal
 ## 12. License
 
 This project is open-source under the MIT License. Built for Hackathon PS-6 (Farm-to-Field).
+---
+
+## Live Project
+
+Access the deployed FarmSense application here: [https://temp-off-by-one.vercel.app/](https://temp-off-by-one.vercel.app/)
